@@ -27,14 +27,14 @@ func (v *Value) Float() (float64, error) {
 	return 0, errors.Errorf("kind %s is not a number", v.Value.Kind())
 }
 
-// Get a value using the given namespace with a full-stop delimiter.
-func GetString(i interface{}, namespace string) (*Value, error) {
+// StringNameSpace gets a value using the given namespace with a full-stop delimiter.
+func StringNameSpace(i interface{}, namespace string) (*Value, error) {
 	namespaces := strings.Split(namespace, ".")
-	return Get(i, namespaces...)
+	return NameSpace(i, namespaces...)
 }
 
-// Get a value by the given namespaces in order.
-func Get(i interface{}, namespaces ...string) (*Value, error) {
+// NameSpace gets a value by the given namespaces in order.
+func NameSpace(i interface{}, namespaces ...string) (*Value, error) {
 	if len(namespaces) == 0 {
 		return nil, ErrNoNamespace
 	}

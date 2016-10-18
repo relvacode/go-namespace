@@ -1,9 +1,12 @@
 package namespace
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
-func TestGetString(t *testing.T) {
-	_, err := GetString(nil, "")
+func TestStringNameSpace(t *testing.T) {
+	_, err := StringNameSpace(nil, "")
 	if err == nil {
 		t.Fatal("no error given")
 	}
@@ -20,7 +23,7 @@ type Embedded struct {
 	Key string
 }
 
-func TestGet(t *testing.T) {
+func TestNameSpace(t *testing.T) {
 	cases := []TestCase{
 		{
 			Name:      "struct",
@@ -97,7 +100,7 @@ func TestGet(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			v, err := Get(c.With, c.Namespace...)
+			v, err := NameSpace(c.With, c.Namespace...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -108,7 +111,7 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func BenchmarkGet_Struct(b *testing.B) {
+func BenchmarkNameSpace_Struct(b *testing.B) {
 	v := struct {
 		Key struct {
 			Key string
@@ -121,7 +124,7 @@ func BenchmarkGet_Struct(b *testing.B) {
 		},
 	}
 	for i := 0; i < b.N; i++ {
-		r, err := Get(v, "Key", "Key")
+		r, err := NameSpace(v, "Key", "Key")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -131,14 +134,14 @@ func BenchmarkGet_Struct(b *testing.B) {
 	}
 }
 
-func BenchmarkGet_Map(b *testing.B) {
+func BenchmarkNameSpace_Map(b *testing.B) {
 	v := map[string]interface{}{
 		"Key": map[string]interface{}{
 			"Key": "Value",
 		},
 	}
 	for i := 0; i < b.N; i++ {
-		r, err := Get(v, "Key", "Key")
+		r, err := NameSpace(v, "Key", "Key")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -146,4 +149,24 @@ func BenchmarkGet_Map(b *testing.B) {
 			b.Fatalf("wanted Value, got %s", r.String())
 		}
 	}
+}
+
+func Example() {
+	// l is your value that you want to search its namespace for
+	// It can be either a struct or map, or an interface to a struct or map.
+	l := map[string]interface{}{
+		"PrimaryKey": map[string]interface{}{
+			"SecondaryKey": "MyValue",
+		},
+	}
+	// Get a namespace by a full stop delimited string value.
+	v, err := StringNameSpace(l, "PrimaryKey.SecondaryKey")
+	// Or get a namespace by a slice of namespaces.
+	v, err = NameSpace(l, "PrimaryKey", "SecondaryKey")
+
+	if err != nil {
+		// Do something with the error here
+	}
+
+	fmt.Println(v.String()) // Outputs: MyValue
 }
