@@ -3,6 +3,7 @@ import "github.com/relvacode/go-namespace"
 ```
 
 [![GoDoc](https://godoc.org/github.com/relvacode/go-namespace?status.svg)](https://godoc.org/github.com/relvacode/go-namespace)
+[![Build Status](https://travis-ci.org/relvacode/go-namespace.svg?branch=master)](https://travis-ci.org/relvacode/go-namespace)
 
 Go namespace provides the ability to get a Go value by a string name. Similar to `text/template`'s value access without templating.
 
