@@ -159,9 +159,9 @@ func Example() {
 			"SecondaryKey": "MyValue",
 		},
 	}
-	// Get a namespace by a full stop delimited string value.
+	// Get a value by a full stop delimited string value.
 	v, err := StringNameSpace(l, "PrimaryKey.SecondaryKey")
-	// Or get a namespace by a slice of namespaces.
+	// Or get a value by a slice of namespaces.
 	v, err = NameSpace(l, "PrimaryKey", "SecondaryKey")
 
 	if err != nil {
