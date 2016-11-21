@@ -2,6 +2,7 @@
 package namespace
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"
@@ -9,6 +10,10 @@ import (
 
 // ErrNoNamespace indicates that no namespace was provided.
 var ErrNoNamespace = errors.New("no namespace provided")
+
+type Stringer interface {
+	String() string
+}
 
 // A value is a wrapper around a reflect value to provide panic safe methods.
 type Value struct {
@@ -27,6 +32,23 @@ func (v *Value) Float() (float64, error) {
 	return 0, errors.Errorf("kind %s is not a number", v.Value.Kind())
 }
 
+func (v *Value) String() string {
+	if str, ok := v.Interface().(Stringer); ok {
+		return str.String()
+	}
+	switch v.Kind() {
+	case reflect.String:
+		return v.Value.String()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fmt.Sprintf("%d", v.Interface())
+	case reflect.Float32, reflect.Float64:
+		return fmt.Sprintf("%f", v.Interface())
+	case reflect.Bool:
+		return fmt.Sprintf("%t", v.Interface())
+	}
+	return fmt.Sprintf("%s", v.Interface())
+}
+
 // StringNameSpace gets a value using the given namespace with a full-stop delimiter.
 func StringNameSpace(i interface{}, namespace string) (*Value, error) {
 	namespaces := strings.Split(namespace, ".")
@@ -42,7 +64,8 @@ func NameSpace(i interface{}, namespaces ...string) (*Value, error) {
 	for i := 0; i < len(namespaces); i++ {
 		v = namespace(v, namespaces[i])
 		if !v.IsValid() {
-			return nil, errors.Errorf("namespace %s not found", strings.Join(namespaces[:i], "."))
+
+			return nil, errors.Errorf("name '%s' not found in object (namespace=%s)", namespaces[i], strings.Join(namespaces, "."))
 		}
 		if v.Kind() == reflect.Interface {
 			v = v.Elem()
