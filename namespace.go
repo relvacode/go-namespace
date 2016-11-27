@@ -1,4 +1,18 @@
-// package namespace is a utility to retrieve a Go value from a string namespace.
+// Package namespace is a utility to retrieve a Go value from a namespace value.
+// Note that due to the laws of reflection only public fields can be accessed by namespace.
+// Struct fields can use the tag ns to modify how namespace handles that struct field.
+// - indicates that the namespace should pass through, treating the field as a transparent name.
+//
+//    struct {
+//      Sub SubType `ns:"-"
+//    }
+//
+// Any other value renames the namespace name of that field.
+//
+//    struct {
+//      Sub SubType `ns:"something"
+//    }
+//
 package namespace
 
 import (
@@ -18,6 +32,16 @@ type Stringer interface {
 // A value is a wrapper around a reflect value to provide panic safe methods.
 type Value struct {
 	reflect.Value
+}
+
+func (v *Value) CanFloat() bool {
+	switch v.Value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return true
+	case reflect.Float32, reflect.Float64:
+		return true
+	}
+	return false
 }
 
 // Float returns a float value is possible.
@@ -64,7 +88,6 @@ func NameSpace(i interface{}, namespaces ...string) (*Value, error) {
 	for i := 0; i < len(namespaces); i++ {
 		v = namespace(v, namespaces[i])
 		if !v.IsValid() {
-
 			return nil, errors.Errorf("name '%s' not found in object (namespace=%s)", namespaces[i], strings.Join(namespaces, "."))
 		}
 		if v.Kind() == reflect.Interface {
@@ -82,10 +105,31 @@ func namespace(v reflect.Value, name string) reflect.Value {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-
 	switch v.Kind() {
 	case reflect.Struct:
-		return v.FieldByName(name)
+		typ := v.Type()
+		for i := 0; i < typ.NumField(); i++ {
+			f := typ.Field(i)
+			if f.Anonymous {
+				nV := namespace(v.Field(i), name)
+				if nV.IsValid() {
+					return nV
+				}
+			}
+			ns := f.Tag.Get("ns")
+			if ns == "-" {
+				nV := namespace(v.Field(i), name)
+				if nV.IsValid() {
+					return nV
+				}
+			}
+			if ns != "" && name == ns {
+				return v.Field(i)
+			}
+			if f.Name == name {
+				return v.Field(i)
+			}
+		}
 	case reflect.Map:
 		return v.MapIndex(reflect.ValueOf(name))
 	}

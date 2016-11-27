@@ -23,6 +23,18 @@ type Embedded struct {
 	Key string
 }
 
+type Child struct {
+	Value string
+}
+
+type PassThrough struct {
+	Container Child `ns:"-"`
+}
+
+type Rename struct {
+	Container Child `ns:"rename"`
+}
+
 func TestNameSpace(t *testing.T) {
 	cases := []TestCase{
 		{
@@ -94,6 +106,26 @@ func TestNameSpace(t *testing.T) {
 					Child string
 				}{
 					Child: "Value",
+				},
+			},
+		},
+		{
+			Name:      "struct/ns.-",
+			Wants:     "Value",
+			Namespace: []string{"Value"},
+			With: PassThrough{
+				Container: Child{
+					Value: "Value",
+				},
+			},
+		},
+		{
+			Name:      "struct/ns.rename",
+			Wants:     "Value",
+			Namespace: []string{"rename", "Value"},
+			With: Rename{
+				Container: Child{
+					Value: "Value",
 				},
 			},
 		},

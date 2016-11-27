@@ -27,3 +27,14 @@ if err != nil {
 
 fmt.Println(v.String()) // Outputs: MyValue
 ```
+
+You can also use the `ns` struct tag to rename or pass-through namespace names.
+
+```go
+type MyStruct struct {
+        // Ignore this field as a namespace
+        Passthough OtherStruct `ns:'-"`
+        // Rename the namespace name to 'new'
+        Rename OtherStruct `ns:"new"`
+}
+```
