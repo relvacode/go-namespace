@@ -25,6 +25,20 @@ import (
 // ErrNoNamespace indicates that no namespace was provided.
 var ErrNoNamespace = errors.New("no namespace provided")
 
+type NamespaceError struct {
+	Ns    []string
+	ObjNs string
+}
+
+func (ns NamespaceError) Error() string {
+	return fmt.Sprintf("Name '%s' not found in object (namespace=%s)", ns.ObjNs, strings.Join(ns.Ns, "."))
+}
+
+func IsNamespaceError(err error) bool {
+	_, ok := err.(NamespaceError)
+	return ok
+}
+
 type Stringer interface {
 	String() string
 }
@@ -88,7 +102,7 @@ func NameSpace(i interface{}, namespaces ...string) (*Value, error) {
 	for i := 0; i < len(namespaces); i++ {
 		v = namespace(v, namespaces[i])
 		if !v.IsValid() {
-			return nil, errors.Errorf("name '%s' not found in object (namespace=%s)", namespaces[i], strings.Join(namespaces, "."))
+			return nil, NamespaceError{ObjNs: namespaces[i], Ns: namespaces}
 		}
 		if v.Kind() == reflect.Interface {
 			v = v.Elem()
