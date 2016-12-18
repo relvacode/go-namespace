@@ -43,6 +43,10 @@ type Stringer interface {
 	String() string
 }
 
+func ValueOf(v interface{}) *Value {
+	return &Value{Value: reflect.ValueOf(v)}
+}
+
 // A value is a wrapper around a reflect value to provide panic safe methods.
 type Value struct {
 	reflect.Value
