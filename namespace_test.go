@@ -6,7 +6,7 @@ import (
 )
 
 func TestStringNameSpace(t *testing.T) {
-	_, err := StringNameSpace(nil, "")
+	_, err := Namespace(nil, "")
 	if err == nil {
 		t.Fatal("no error given")
 	}
@@ -132,7 +132,7 @@ func TestNameSpace(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
-			v, err := NameSpace(c.With, c.Namespace...)
+			v, err := Namespace(c.With, c.Namespace...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -156,7 +156,7 @@ func BenchmarkNameSpace_Struct(b *testing.B) {
 		},
 	}
 	for i := 0; i < b.N; i++ {
-		r, err := NameSpace(v, "Key", "Key")
+		r, err := Namespace(v, "Key", "Key")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -173,7 +173,7 @@ func BenchmarkNameSpace_Map(b *testing.B) {
 		},
 	}
 	for i := 0; i < b.N; i++ {
-		r, err := NameSpace(v, "Key", "Key")
+		r, err := Namespace(v, "Key", "Key")
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -192,9 +192,9 @@ func Example() {
 		},
 	}
 	// Get a value by a full stop delimited string value.
-	v, err := StringNameSpace(l, "PrimaryKey.SecondaryKey")
+	v, err := Namespace(l, "PrimaryKey.SecondaryKey")
 	// Or get a value by a slice of namespaces.
-	v, err = NameSpace(l, "PrimaryKey", "SecondaryKey")
+	v, err = Namespace(l, "PrimaryKey", "SecondaryKey")
 
 	if err != nil {
 		// Do something with the error here
