@@ -90,8 +90,8 @@ func (v Value) String() string {
 	return fmt.Sprint(v.Interface())
 }
 
-// NameSpace gets a value by the given namespaces in order.
-func Namespace(i interface{}, namespaces ...string) (Value, error) {
+// Namespace gets a value by the given namespaces in order.
+func Namespace(i interface{}, namespaces []string) (Value, error) {
 	if len(namespaces) == 0 {
 		return Value{}, ErrNoNamespace
 	}
