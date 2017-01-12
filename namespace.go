@@ -97,7 +97,7 @@ func Namespace(i interface{}, namespaces []string) (Value, error) {
 	}
 	v := reflect.ValueOf(i)
 	for i := 0; i < len(namespaces); i++ {
-		v = namespace(v, namespaces[i])
+		v = Get(v, namespaces[i])
 		if !v.IsValid() {
 			return Value{}, NamespaceError{ObjNs: namespaces[i], Ns: namespaces}
 		}
@@ -108,7 +108,8 @@ func Namespace(i interface{}, namespaces []string) (Value, error) {
 	return Value{Value: v}, nil
 }
 
-func namespace(v reflect.Value, name string) reflect.Value {
+// Get gets a value from a given value using the given name.
+func Get(v reflect.Value, name string) reflect.Value {
 	if v.Kind() == reflect.Interface {
 		v = v.Elem()
 	}
@@ -122,14 +123,14 @@ func namespace(v reflect.Value, name string) reflect.Value {
 		for i := 0; i < typ.NumField(); i++ {
 			f := typ.Field(i)
 			if f.Anonymous {
-				nV := namespace(v.Field(i), name)
+				nV := Get(v.Field(i), name)
 				if nV.IsValid() {
 					return nV
 				}
 			}
 			ns := f.Tag.Get("ns")
 			if ns == "-" {
-				nV := namespace(v.Field(i), name)
+				nV := Get(v.Field(i), name)
 				if nV.IsValid() {
 					return nV
 				}
