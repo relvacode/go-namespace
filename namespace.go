@@ -18,6 +18,7 @@ package namespace
 import (
 	"errors"
 	"fmt"
+	"github.com/renstrom/fuzzysearch/fuzzy"
 	"reflect"
 	"strings"
 )
@@ -31,12 +32,16 @@ type Kinder interface {
 var ErrNoNamespace = errors.New("no namespace provided")
 
 type NamespaceError struct {
-	Ns    []string
-	ObjNs string
+	Suggestions []string
+	Ns          string
 }
 
 func (ns NamespaceError) Error() string {
-	return fmt.Sprintf("Name '%s' not found in object (namespace=%s)", ns.ObjNs, strings.Join(ns.Ns, "."))
+	s := fmt.Sprintf("Name %q not found in object", ns.Ns)
+	if len(ns.Suggestions) > 0 {
+		s = s + fmt.Sprintf(" (Did you mean %q?)", strings.Join(ns.Suggestions, ", "))
+	}
+	return s
 }
 
 func ValueOf(v interface{}) Value {
@@ -97,15 +102,48 @@ func Namespace(i interface{}, namespaces []string) (Value, error) {
 	}
 	v := reflect.ValueOf(i)
 	for i := 0; i < len(namespaces); i++ {
-		v = Get(v, namespaces[i])
-		if !v.IsValid() {
-			return Value{}, NamespaceError{ObjNs: namespaces[i], Ns: namespaces}
+		n := Get(v, namespaces[i])
+		if !n.IsValid() {
+			return Value{}, NamespaceError{Ns: namespaces[i], Suggestions: suggest(v, namespaces[i])}
 		}
+		v = n
 		if v.Kind() == reflect.Interface {
 			v = v.Elem()
 		}
 	}
 	return Value{Value: v}, nil
+}
+
+// suggest suggests the closest matches to the requested namespace name.
+func suggest(v reflect.Value, name string) []string {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	targets := []string{}
+	suggestions := []string{}
+	switch v.Kind() {
+	case reflect.Struct:
+		t := v.Type()
+		for i := 0; i < t.NumField(); i++ {
+			f := t.Field(i)
+			if f.Anonymous {
+				suggestions = append(suggestions, suggest(v.Field(i), name)...)
+			}
+			if strings.ToLower(f.Name) == strings.ToLower(name) {
+				suggestions = append(suggestions, f.Name)
+				continue
+			}
+			targets = append(targets, f.Name)
+		}
+	case reflect.Map:
+		for _, k := range v.MapKeys() {
+			if k.Kind() != reflect.String {
+				continue
+			}
+			targets = append(targets, k.String())
+		}
+	}
+	return append(suggestions, fuzzy.Find(name, targets)...)
 }
 
 // Get gets a value from a given value using the given name.
