@@ -16,10 +16,8 @@ l := map[string]interface{}{
   },
 }
 
-// Get a value by a full stop delimited string value.
-v, err := namespace.StringNameSpace(l, "PrimaryKey.SecondaryKey")
-// Or get the value by a slice of namespaces.
-v, err = namespace.NameSpace(l, "PrimaryKey", "SecondaryKey")
+// Get a value using ordered names.
+v, err = namespace.NameSpace(l, []string{"PrimaryKey", "SecondaryKey"})
 
 if err != nil {
   // Do something with the error here
@@ -28,13 +26,25 @@ if err != nil {
 fmt.Println(v.String()) // Outputs: MyValue
 ```
 
-You can also use the `ns` struct tag to rename or pass-through namespace names.
+### Struct Tags
+
+Using the `ns` struct tag you can change how namespace will access that struct field.
 
 ```go
 type MyStruct struct {
         // Ignore this field as a namespace
         Passthough OtherStruct `ns:'-"`
+        
         // Rename the namespace name to 'new'
         Rename OtherStruct `ns:"new"`
 }
+```
+
+### `namespace.Value`
+
+`namespace.Value` is a wrapper around `reflect.Value` that provides safe methods for converting objects into a requested native type.
+
+```go
+v := namespace.ValueOf(1234.567)
+i, err := v.Int()
 ```
