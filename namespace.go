@@ -96,12 +96,16 @@ func (v Value) String() string {
 }
 
 // Namespace gets a value by the given namespaces in order.
+// If the length of namespace is emtpy then the object itself is returned.
 func Namespace(i interface{}, namespaces []string) (Value, error) {
 	if len(namespaces) == 0 {
-		return Value{}, ErrNoNamespace
+		return ValueOf(i), nil
 	}
 	v := reflect.ValueOf(i)
 	for i := 0; i < len(namespaces); i++ {
+		if ns, ok := v.Interface().(Namespacer); ok {
+			return ns.Namespace(namespaces[i:])
+		}
 		n := Get(v, namespaces[i])
 		if !n.IsValid() {
 			return Value{}, NamespaceError{Ns: namespaces[i], Suggestions: suggest(v, namespaces[i])}
@@ -144,6 +148,10 @@ func suggest(v reflect.Value, name string) []string {
 		}
 	}
 	return append(suggestions, fuzzy.Find(name, targets)...)
+}
+
+type Namespacer interface {
+	Namespace([]string) (Value, error)
 }
 
 // Get gets a value from a given value using the given name.

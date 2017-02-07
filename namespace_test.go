@@ -5,13 +5,6 @@ import (
 	"testing"
 )
 
-func TestStringNameSpace(t *testing.T) {
-	_, err := Namespace(nil, []string{})
-	if err == nil {
-		t.Fatal("no error given")
-	}
-}
-
 type TestCase struct {
 	Name      string
 	Wants     string
