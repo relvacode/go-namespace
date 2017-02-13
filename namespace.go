@@ -16,20 +16,17 @@
 package namespace
 
 import (
-	"errors"
 	"fmt"
 	"github.com/renstrom/fuzzysearch/fuzzy"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // Kinder is an interface that reports its kind.
 type Kinder interface {
 	Kind() reflect.Kind
 }
-
-// ErrNoNamespace indicates that no namespace was provided.
-var ErrNoNamespace = errors.New("no namespace provided")
 
 type NamespaceError struct {
 	Suggestions []string
@@ -154,6 +151,14 @@ type Namespacer interface {
 	Namespace([]string) (Value, error)
 }
 
+func fieldName(v reflect.StructField) string {
+	ns := v.Tag.Get("ns")
+	if ns != "" {
+		return ns
+	}
+	return v.Name
+}
+
 // Get gets a value from a given value using the given name.
 func Get(v reflect.Value, name string) reflect.Value {
 	if v.Kind() == reflect.Interface {
@@ -168,23 +173,14 @@ func Get(v reflect.Value, name string) reflect.Value {
 		typ := v.Type()
 		for i := 0; i < typ.NumField(); i++ {
 			f := typ.Field(i)
-			if f.Anonymous {
+			ns := fieldName(f)
+			if (f.Anonymous && ns != "") || ns == "-" {
 				nV := Get(v.Field(i), name)
 				if nV.IsValid() {
 					return nV
 				}
 			}
-			ns := f.Tag.Get("ns")
-			if ns == "-" {
-				nV := Get(v.Field(i), name)
-				if nV.IsValid() {
-					return nV
-				}
-			}
-			if ns != "" && name == ns {
-				return v.Field(i)
-			}
-			if f.Name == name {
+			if ns == name {
 				return v.Field(i)
 			}
 		}
@@ -192,4 +188,46 @@ func Get(v reflect.Value, name string) reflect.Value {
 		return v.MapIndex(reflect.ValueOf(name))
 	}
 	return reflect.Value{}
+}
+
+func Scan(i interface{}) interface{} {
+	v := reflect.ValueOf(i)
+	return scan(v.Type())
+}
+
+var tType = reflect.TypeOf(time.Time{})
+
+func scan(v reflect.Type) interface{} {
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() == reflect.Interface {
+		return "object"
+	}
+	if v == tType {
+		return "time"
+	}
+	switch v.Kind() {
+	case reflect.Struct:
+		names := map[string]interface{}{}
+		for i := 0; i < v.NumField(); i++ {
+			f := v.Field(i)
+			ns := fieldName(f)
+			if (f.Anonymous && ns == "") || ns == "-" {
+				x := scan(f.Type)
+				switch x.(type) {
+				case map[string]interface{}:
+					for k, v := range x.(map[string]interface{}) {
+						names[k] = v
+					}
+				default:
+
+				}
+				continue
+			}
+			names[ns] = scan(f.Type)
+		}
+		return names
+	}
+	return v.Name()
 }
