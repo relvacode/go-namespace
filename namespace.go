@@ -20,7 +20,6 @@ import (
 	"github.com/renstrom/fuzzysearch/fuzzy"
 	"reflect"
 	"strings"
-	"time"
 )
 
 // Kinder is an interface that reports its kind.
@@ -151,7 +150,7 @@ type Namespacer interface {
 	Namespace([]string) (Value, error)
 }
 
-func fieldName(v reflect.StructField) string {
+func Field(v reflect.StructField) string {
 	ns := v.Tag.Get("ns")
 	if ns != "" {
 		return ns
@@ -173,7 +172,7 @@ func Get(v reflect.Value, name string) reflect.Value {
 		typ := v.Type()
 		for i := 0; i < typ.NumField(); i++ {
 			f := typ.Field(i)
-			ns := fieldName(f)
+			ns := Field(f)
 			if (f.Anonymous && ns != "") || ns == "-" {
 				nV := Get(v.Field(i), name)
 				if nV.IsValid() {
@@ -190,44 +189,27 @@ func Get(v reflect.Value, name string) reflect.Value {
 	return reflect.Value{}
 }
 
-func Scan(i interface{}) interface{} {
-	v := reflect.ValueOf(i)
-	return scan(v.Type())
+func Names(v interface{}) [][]string {
+	return names(reflect.TypeOf(v), nil)
 }
 
-var tType = reflect.TypeOf(time.Time{})
-
-func scan(v reflect.Type) interface{} {
-	for v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	if v.Kind() == reflect.Interface {
-		return "object"
-	}
-	if v == tType {
-		return "time"
-	}
+func names(v reflect.Type, prev []string) (ns [][]string) {
 	switch v.Kind() {
 	case reflect.Struct:
-		names := map[string]interface{}{}
 		for i := 0; i < v.NumField(); i++ {
 			f := v.Field(i)
-			ns := fieldName(f)
-			if (f.Anonymous && ns == "") || ns == "-" {
-				x := scan(f.Type)
-				switch x.(type) {
-				case map[string]interface{}:
-					for k, v := range x.(map[string]interface{}) {
-						names[k] = v
-					}
-				default:
-
-				}
+			n := Field(f)
+			if f.Anonymous && n != "" || n == "-" {
+				ns = append(ns, names(f.Type, prev)...)
 				continue
 			}
-			names[ns] = scan(f.Type)
+			tn := names(f.Type, append(prev, n))
+			if tn == nil {
+				ns = append(ns, append(prev, n))
+				continue
+			}
+			ns = append(ns, tn...)
 		}
-		return names
 	}
-	return v.Name()
+	return
 }
