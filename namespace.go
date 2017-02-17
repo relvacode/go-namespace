@@ -27,6 +27,12 @@ type Kinder interface {
 	Kind() reflect.Kind
 }
 
+// A Namespacer is an object that can retrieve it's own namespace value.
+// If a type implements Namespacer then that method is used instead of reflect traversal.
+type Namespacer interface {
+	Namespace([]string) (Value, error)
+}
+
 type NamespaceError struct {
 	Suggestions []string
 	Ns          string
@@ -40,6 +46,7 @@ func (ns NamespaceError) Error() string {
 	return s
 }
 
+// ValueOf creates a new Value from the given interface
 func ValueOf(v interface{}) Value {
 	return Value{Value: reflect.ValueOf(v)}
 }
@@ -94,8 +101,8 @@ func (v Value) String() string {
 // Namespace gets a value by the given namespaces in order.
 // If the length of namespace is emtpy then the object itself is returned.
 func Namespace(i interface{}, namespaces []string) (Value, error) {
-	if len(namespaces) == 0 {
-		return ValueOf(i), nil
+	if ns, ok := i.(Namespacer); ok {
+		return ns.Namespace(namespaces)
 	}
 	v := reflect.ValueOf(i)
 	for i := 0; i < len(namespaces); i++ {
@@ -146,10 +153,7 @@ func suggest(v reflect.Value, name string) []string {
 	return append(suggestions, fuzzy.Find(name, targets)...)
 }
 
-type Namespacer interface {
-	Namespace([]string) (Value, error)
-}
-
+// Field returns the namespace name for a given struct field.
 func Field(v reflect.StructField) string {
 	ns := v.Tag.Get("ns")
 	if ns != "" {
@@ -189,6 +193,8 @@ func Get(v reflect.Value, name string) reflect.Value {
 	return reflect.Value{}
 }
 
+// Names returns a list of all possible namespaces for the given object.
+// nil is returned if the object does not contain namespaces.
 func Names(v interface{}) [][]string {
 	return names(reflect.TypeOf(v), nil)
 }
