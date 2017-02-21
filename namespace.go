@@ -154,12 +154,15 @@ func suggest(v reflect.Value, name string) []string {
 }
 
 // Field returns the namespace name for a given struct field.
-func Field(v reflect.StructField) string {
+func Field(v reflect.StructField) (name string, mapped bool) {
 	ns := v.Tag.Get("ns")
 	if ns != "" {
-		return ns
+		mapped = true
+		name = ns
+		return
 	}
-	return v.Name
+	name = v.Name
+	return
 }
 
 // Get gets a value from a given value using the given name.
@@ -176,8 +179,11 @@ func Get(v reflect.Value, name string) reflect.Value {
 		typ := v.Type()
 		for i := 0; i < typ.NumField(); i++ {
 			f := typ.Field(i)
-			ns := Field(f)
-			if (f.Anonymous && ns != "") || ns == "-" {
+			if f.PkgPath != "" {
+				continue
+			}
+			ns, mapped := Field(f)
+			if (f.Anonymous && !mapped) || ns == "-" {
 				nV := Get(v.Field(i), name)
 				if nV.IsValid() {
 					return nV
@@ -193,23 +199,47 @@ func Get(v reflect.Value, name string) reflect.Value {
 	return reflect.Value{}
 }
 
-// Names returns a list of all possible namespaces for the given object.
-// nil is returned if the object does not contain namespaces.
-func Names(v interface{}) [][]string {
-	return names(reflect.TypeOf(v), nil)
+// A Namer is an interface that is capable of returning a list of possible namespace names to access within the
+// interface value.
+type Namer interface {
+	// Names returns a list of available namespaces.
+	// All names should be prepended with `prev`.
+	Names(prev []string) [][]string
 }
 
-func names(v reflect.Type, prev []string) (ns [][]string) {
+// Names returns a list of all possible namespaces for the given object.
+// nil is returned if the object does not contain namespaces.
+// If matches are found, all namespaces are prefixed with an optional 'prev' namespace
+// which is useful for recursive access.
+func Names(v interface{}, prev ...string) [][]string {
+	val := reflect.ValueOf(v)
+	if val.Kind() == reflect.Interface {
+		val = val.Elem()
+	}
+	return names(val, prev)
+}
+
+func names(v reflect.Value, prev []string) (ns [][]string) {
+	if nmr, ok := v.Interface().(Namer); ok {
+		return nmr.Names(prev)
+	}
+
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
-			f := v.Field(i)
-			n := Field(f)
-			if f.Anonymous && n != "" || n == "-" {
-				ns = append(ns, names(f.Type, prev)...)
+			f := v.Type().Field(i)
+			if f.PkgPath != "" {
 				continue
 			}
-			tn := names(f.Type, append(prev, n))
+			n, mapped := Field(f)
+			if (f.Anonymous && !mapped) || n == "-" {
+				ns = append(ns, names(v.Field(i), prev)...)
+				continue
+			}
+			tn := names(v.Field(i), append(prev, n))
 			if tn == nil {
 				ns = append(ns, append(prev, n))
 				continue
