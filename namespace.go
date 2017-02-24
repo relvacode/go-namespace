@@ -122,35 +122,23 @@ func Namespace(i interface{}, namespaces []string) (Value, error) {
 }
 
 // suggest suggests the closest matches to the requested namespace name.
-func suggest(v reflect.Value, name string) []string {
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+func suggest(v reflect.Value, name string) (res []string) {
+	names := names(v, nil)
+	if len(names) == 0 {
+		return
 	}
-	targets := []string{}
-	suggestions := []string{}
-	switch v.Kind() {
-	case reflect.Struct:
-		t := v.Type()
-		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if f.Anonymous {
-				suggestions = append(suggestions, suggest(v.Field(i), name)...)
-			}
-			if strings.ToLower(f.Name) == strings.ToLower(name) {
-				suggestions = append(suggestions, f.Name)
-				continue
-			}
-			targets = append(targets, f.Name)
-		}
-	case reflect.Map:
-		for _, k := range v.MapKeys() {
-			if k.Kind() != reflect.String {
-				continue
-			}
-			targets = append(targets, k.String())
+	uniq := make(map[string]struct{})
+	for i := 0; i < len(names); i++ {
+		if len(names[i]) > 0 {
+			uniq[names[i][0]] = struct{}{}
 		}
 	}
-	return append(suggestions, fuzzy.Find(name, targets)...)
+	for k := range uniq {
+		if fuzzy.MatchFold(k, name) {
+			res = append(res, k)
+		}
+	}
+	return
 }
 
 // Field returns the namespace name for a given struct field.
@@ -213,13 +201,13 @@ type Namer interface {
 // which is useful for recursive access.
 func Names(v interface{}, prev ...string) [][]string {
 	val := reflect.ValueOf(v)
-	if val.Kind() == reflect.Interface {
-		val = val.Elem()
-	}
 	return names(val, prev)
 }
 
 func names(v reflect.Value, prev []string) (ns [][]string) {
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
 	if nmr, ok := v.Interface().(Namer); ok {
 		return nmr.Names(prev)
 	}
@@ -227,6 +215,7 @@ func names(v reflect.Value, prev []string) (ns [][]string) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
@@ -245,6 +234,26 @@ func names(v reflect.Value, prev []string) (ns [][]string) {
 				continue
 			}
 			ns = append(ns, tn...)
+		}
+	case reflect.Map:
+		keys := v.MapKeys()
+		for _, k := range keys {
+			if k.Kind() != reflect.String {
+				continue
+			}
+			kv := v.MapIndex(k)
+			if kv.Kind() == reflect.Interface {
+				kv = kv.Elem()
+			}
+			for kv.Kind() == reflect.Ptr {
+				kv = kv.Elem()
+			}
+			switch kv.Kind() {
+			case reflect.Map, reflect.Struct:
+				ns = append(ns, names(kv, append(prev, k.String()))...)
+			default:
+				ns = append(ns, append(prev, k.String()))
+			}
 		}
 	}
 	return
