@@ -16,11 +16,14 @@
 package namespace
 
 import (
+	"errors"
 	"fmt"
 	"github.com/renstrom/fuzzysearch/fuzzy"
 	"reflect"
 	"strings"
 )
+
+var ErrNilValue = errors.New("nil value")
 
 // Kinder is an interface that reports its kind.
 type Kinder interface {
@@ -101,6 +104,9 @@ func (v Value) String() string {
 // Namespace gets a value by the given namespaces in order.
 // If the length of namespace is emtpy then the object itself is returned.
 func Namespace(i interface{}, namespaces []string) (Value, error) {
+	if i == nil {
+		return Value{}, ErrNilValue
+	}
 	if ns, ok := i.(Namespacer); ok {
 		return ns.Namespace(namespaces)
 	}
