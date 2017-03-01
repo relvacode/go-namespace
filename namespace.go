@@ -211,17 +211,23 @@ func Names(v interface{}, prev ...string) [][]string {
 }
 
 func names(v reflect.Value, prev []string) (ns [][]string) {
-	if v.Kind() == reflect.Interface {
+	switch v.Kind() {
+	case reflect.Map, reflect.Ptr:
+		if v.IsNil() {
+			return
+		}
+	case reflect.Interface:
+		if v.IsNil() {
+			return
+		}
 		v = v.Elem()
 	}
 	if nmr, ok := v.Interface().(Namer); ok {
 		return nmr.Names(prev)
 	}
-
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
-
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
