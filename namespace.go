@@ -214,8 +214,13 @@ func names(v reflect.Value, prev []string) (ns [][]string) {
 	switch v.Kind() {
 	case reflect.Map, reflect.Ptr:
 		if v.IsNil() {
-			return
+			t := v.Type()
+			if v.Kind() == reflect.Ptr {
+				t = t.Elem()
+			}
+			v = reflect.New(t)
 		}
+
 	case reflect.Interface:
 		if v.IsNil() {
 			return
@@ -228,6 +233,7 @@ func names(v reflect.Value, prev []string) (ns [][]string) {
 	for v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
+
 	switch v.Kind() {
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
